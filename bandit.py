@@ -244,12 +244,15 @@ def bandit_sparse_estimator(seq,T,N,k):
 
         # estimate reward
         Q=_madowJointInclusionMatrix(p)
-        temp = np.zeros(N)
+        temp1 = np.zeros(N)
+        temp2=np.zeros(N)
         for i in range(N):
-            t1=np.dot(S_ind,Q[:,i])/(la.norm(Q[:,i])**2)
-            temp[i]=la.norm(S_ind - t1*Q[:,i])
+            temp2[i]=np.dot(S_ind,Q[:,i])/(la.norm(Q[:,i])**2)
+            temp1[i]=la.norm(S_ind - temp2*Q[:,i])
         x_hat=np.zeros(N)
-        x_hat[np.argmin(temp)]=2
+        temp1[S_ind == 0]=np.inf
+        b=np.argmin(temp1)
+        x_hat[b]=temp2[b]
         
         X_hat += x_hat
         pbar.update(1)
