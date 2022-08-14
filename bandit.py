@@ -23,7 +23,6 @@ def _madowJointInclusionMatrix(p):
             pkl[k,l]=min( max(0, p[k]- delta), p[l]) + min(p[k],max(0, delta+p[l]-1))
             pkl[l,k]=pkl[k,l]
         pkl[k,k]=p[k]
-    
     return pkl
 
 @njit
@@ -67,6 +66,7 @@ def _madowSampling(N, p, k):
     return S
 
 ##############################################################
+
 def bandit_ips_estimator(seq,T,N,k):
     X_hat = np.zeros(N)
     total_reward=0
@@ -105,16 +105,14 @@ def bandit_ips_estimator(seq,T,N,k):
         opt = files_seen[(-files_seen).argsort()[:k]].sum()
         regret[t] = (opt - total_reward)/ (t+1)
 
+        # restimation
         x_hat=np.zeros(N)
         if r>0:
             for i in range(N):
                 if i in S:
                     x_hat[i]=1.0/p[i]
-            # estimate reward
-            # Q=_madowJointInclusionMatrix(p)
-            # x_hat = r*(np.linalg.inv(Q) @ S_ind)
 
-            # update cumulative reward
+        # update cumulative reward
         X_hat = X_hat + x_hat
         
         pbar.update(1)
@@ -122,16 +120,17 @@ def bandit_ips_estimator(seq,T,N,k):
         
     return regret, total_reward
 
-##############################################################
+# IPS loss based estimator
 def bandit_ipsl_estimator(seq,T,N,k):
     X_hat = np.zeros(N)
     total_reward=0
     files_seen=np.zeros(N)
     regret = np.zeros(T)
     w=np.zeros(N)
+
     # might not be the best possible eta
     eta = np.sqrt(k*np.log(N*np.exp(1)/k)/(3*T*N))
-    e_k=0
+
     # exploration parameter
     gamma=eta*N
     
@@ -142,20 +141,14 @@ def bandit_ipsl_estimator(seq,T,N,k):
     pbar = tqdm(range(T), dynamic_ncols=True, leave=True,position=0)
     for t in range(T):
         # update weight
-        # if t % 1000 == 0:
-        #     print(f"t:{t}, \n X_hat: { X_hat}, \n w: {w},  \n e_k: {e_k}")
         try:
-            m=0#np.floor((min(X_hat)+max(X_hat))/2)
-            w = np.exp(eta*(X_hat-m))
-            # if sum(w)>1 or sum(w)<1e-01:
-            # w = w / sum(w)
+            w = np.exp(eta*(X_hat))
         except FloatingPointError:
             print(f"X_hat: { X_hat}, w: {w}")
             sys.exit(0)
             
         # compute p_i
         e_k = _elementary_symmetric_polynomial(w, k)
-        
         p_dash = np.zeros(N)
         for i in range(N):
             w_i=np.delete(w,i)
@@ -186,17 +179,15 @@ def bandit_ipsl_estimator(seq,T,N,k):
 
         x_hat=np.zeros(N)
         for i in range(N):
+            # reward for i in S: 1 if hit, highly negative if miss
             if i in S:
                 x_hat[i] = 1 - (1.0-r)/p[i]
-            else:
+            # reward for i not in S: 1 if miss, else 0
+            else: 
                 if r == 0:
                     x_hat[i] = 1
-                    
-            # estimate reward
-            # Q=_madowJointInclusionMatrix(p)
-            # x_hat = r*(np.linalg.inv(Q) @ S_ind)
 
-            # update cumulative reward
+        # update cumulative reward
         X_hat = X_hat + x_hat
         
         pbar.update(1)
@@ -204,7 +195,9 @@ def bandit_ipsl_estimator(seq,T,N,k):
         
     return regret, total_reward
 
-def bandit_ipsf_estimator(seq,T,N,k):
+# if there is a hit, give 1 reward to all i in S, and 0 otherwise
+# give 0 reward to all i when there is no hit 
+def bandit_fixed_reward_estimator(seq,T,N,k):
     X_hat = np.zeros(N)
     total_reward=0
     files_seen=np.zeros(N)
@@ -223,13 +216,8 @@ def bandit_ipsf_estimator(seq,T,N,k):
     pbar = tqdm(range(T), dynamic_ncols=True, leave=True,position=0)
     for t in range(T):
         # update weight
-        # if t % 1000 == 0:
-        #     print(f"t:{t}, \n X_hat: { X_hat}, \n w: {w},  \n e_k: {e_k}")
         try:
-            m=0#np.floor((min(X_hat)+max(X_hat))/2)
-            w = np.exp(eta*(X_hat-m))
-            # if sum(w)>1 or sum(w)<1e-01:
-            # w = w / sum(w)
+            w = np.exp(eta*(X_hat))
         except FloatingPointError:
             print(f"X_hat: { X_hat}, w: {w}")
             sys.exit(0)
@@ -265,6 +253,7 @@ def bandit_ipsf_estimator(seq,T,N,k):
         opt = files_seen[(-files_seen).argsort()[:k]].sum()
         regret[t] = (opt - total_reward)/ (t+1)
 
+        # reward estimation
         x_hat=np.zeros(N)
         for i in range(N):
             if i in S:
@@ -273,11 +262,7 @@ def bandit_ipsf_estimator(seq,T,N,k):
                 if r == 0:
                     x_hat[i] = 1
                     
-            # estimate reward
-            # Q=_madowJointInclusionMatrix(p)
-            # x_hat = r*(np.linalg.inv(Q) @ S_ind)
-
-            # update cumulative reward
+        # update cumulative reward
         X_hat = X_hat + x_hat
         
         pbar.update(1)
@@ -287,6 +272,7 @@ def bandit_ipsf_estimator(seq,T,N,k):
 
 ##########################################################################
 
+# full feedback
 def hedge(seq,T,N,k):
     X = np.zeros(N)
     total_reward=0
@@ -296,7 +282,7 @@ def hedge(seq,T,N,k):
 
     pbar = tqdm(range(T), dynamic_ncols=True, leave=True,position=0)
     for t in  range(T):
-        # FULL FEEDBACK
+
         w = np.exp(eta*X)
 
         e_k=_elementary_symmetric_polynomial(w, k)
@@ -329,6 +315,7 @@ def hedge(seq,T,N,k):
 
 ###################################################################################
 
+# least square estimator of linear bandit
 def bandit_least_sq_estimator(seq,T,N,k):
     eta = np.sqrt(k*np.log(N*np.exp(1)/k)/(3*T*N))
 
@@ -383,6 +370,7 @@ def bandit_least_sq_estimator(seq,T,N,k):
 
 #######################################################################
 
+# 1-sparse estimator
 def bandit_sparse_estimator(seq,T,N,k):
     X_hat = np.zeros(N)
     total_reward =0
