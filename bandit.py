@@ -67,12 +67,13 @@ def _madowSampling(N, p, k):
 
 ##############################################################
 
-def bandit_ips_estimator(seq,T,N,k):
+def bandit_ips_estimator(seq,T,N,k, eta=None):
     X_hat = np.zeros(N)
     total_reward=0
     files_seen=np.zeros(N)
     regret = np.zeros(T)
-    eta = np.sqrt(k*np.log(N*np.exp(1)/k)/(3*T*N))
+    if eta==None:
+        eta = np.sqrt(k*np.log(N*np.exp(1)/k)/(3*T*N))
     gamma=eta*N
     pi=np.ones(N)*k/N
     
@@ -121,7 +122,7 @@ def bandit_ips_estimator(seq,T,N,k):
     return regret, total_reward
 
 # IPS loss based estimator
-def bandit_ipsl_estimator(seq,T,N,k):
+def bandit_ipsl_estimator(seq,T,N,k,eta=None):
     X_hat = np.zeros(N)
     total_reward=0
     files_seen=np.zeros(N)
@@ -129,7 +130,8 @@ def bandit_ipsl_estimator(seq,T,N,k):
     w=np.zeros(N)
 
     # might not be the best possible eta
-    eta = np.sqrt(k*np.log(N*np.exp(1)/k)/(3*T*N))
+    if eta==None:
+        eta = np.sqrt(k*np.log(N*np.exp(1)/k)/(3*T*N))
 
     # exploration parameter
     gamma=eta*N
@@ -197,14 +199,15 @@ def bandit_ipsl_estimator(seq,T,N,k):
 
 # if there is a hit, give 1 reward to all i in S, and 0 otherwise
 # give 0 reward to all i when there is no hit 
-def bandit_fixed_reward_estimator(seq,T,N,k):
+def bandit_fixed_reward_estimator(seq,T,N,k,eta=None):
     X_hat = np.zeros(N)
     total_reward=0
     files_seen=np.zeros(N)
     regret = np.zeros(T)
     w=np.zeros(N)
     # might not be the best possible eta
-    eta = np.sqrt(k*np.log(N*np.exp(1)/k)/(3*T*N))
+    if eta==None:
+        eta = np.sqrt(k*np.log(N*np.exp(1)/k)/(3*T*N))
     e_k=0
     # exploration parameter
     gamma=eta*N
@@ -266,7 +269,7 @@ def bandit_fixed_reward_estimator(seq,T,N,k):
         X_hat = X_hat + x_hat
         
         pbar.update(1)
-        pbar.set_description(f"IPSF: Time: {t + 1} | Reward: {total_reward} | OPT: {opt} | Regret: {regret[t]:4f}")
+        pbar.set_description(f"FR: Time: {t + 1} | Reward: {total_reward} | OPT: {opt} | Regret: {regret[t]:4f}")
         
     return regret, total_reward
 
@@ -316,8 +319,10 @@ def hedge(seq,T,N,k):
 ###################################################################################
 
 # least square estimator of linear bandit
-def bandit_least_sq_estimator(seq,T,N,k):
-    eta = np.sqrt(k*np.log(N*np.exp(1)/k)/(3*T*N))
+def bandit_least_sq_estimator(seq,T,N,k,eta=None):
+    
+    if eta==None:
+        eta = np.sqrt(k*np.log(N*np.exp(1)/k)/(3*T*N))
 
     pi=np.ones(N)*k/N
     gamma=eta*N
@@ -371,11 +376,12 @@ def bandit_least_sq_estimator(seq,T,N,k):
 #######################################################################
 
 # 1-sparse estimator
-def bandit_sparse_estimator(seq,T,N,k):
+def bandit_sparse_estimator(seq,T,N,k,eta=None):
     X_hat = np.zeros(N)
     total_reward =0
     regret = np.zeros(T)
-    eta = np.sqrt(k*np.log(N*np.exp(1)/k)/(3*T*N))
+    if eta==None:
+        eta = np.sqrt(k*np.log(N*np.exp(1)/k)/(3*T*N))
     files_seen=np.zeros(N)
     pbar = tqdm(range(T), dynamic_ncols=True, leave=True,position=0) 
     for t in range(T):
